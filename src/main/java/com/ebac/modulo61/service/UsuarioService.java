@@ -3,7 +3,6 @@ package com.ebac.modulo61.service;
 import com.ebac.modulo61.dto.Usuario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -11,7 +10,7 @@ import java.util.Optional;
 public class UsuarioService {
 
     @Autowired
-    UsuarioRepository usuarioRepository;
+    private UsuarioRepository usuarioRepository;
 
     public Usuario crearUsuario(Usuario usuario) {
         return usuarioRepository.save(usuario);
