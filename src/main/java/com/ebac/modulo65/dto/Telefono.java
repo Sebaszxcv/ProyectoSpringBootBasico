@@ -1,25 +1,44 @@
 package com.ebac.modulo65.dto;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import lombok.Data;
+import jakarta.persistence.*;
 
-@Data
 @Entity
+@Table(name = "telefonos")
 public class Telefono {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int idTelefono;
-    private String tipoTelefono;
-    private int lada;
+
     private String numero;
+    private String lada;
+    private String tipoTelefono;
+
     @ManyToOne
-    @JoinColumn(name = "idUsuario")
-    @JsonBackReference  // Parte no administrada de la relación
+    @JoinColumn(name = "usuario_id")
     private Usuario usuario;
+
+    public Telefono() {}
+
+    public Telefono(String numero, String lada, String tipoTelefono, Usuario usuario) {
+        this.numero = numero;
+        this.lada = lada;
+        this.tipoTelefono = tipoTelefono;
+        this.usuario = usuario;
+    }
+
+    public int getIdTelefono() { return idTelefono; }
+    public void setIdTelefono(int idTelefono) { this.idTelefono = idTelefono; }
+
+    public String getNumero() { return numero; }
+    public void setNumero(String numero) { this.numero = numero; }
+
+    public String getLada() { return lada; }
+    public void setLada(String lada) { this.lada = lada; }
+
+    public String getTipoTelefono() { return tipoTelefono; }
+    public void setTipoTelefono(String tipoTelefono) { this.tipoTelefono = tipoTelefono; }
+
+    public Usuario getUsuario() { return usuario; }
+    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
 }

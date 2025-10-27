@@ -1,192 +1,191 @@
 package com.ebac.modulo65.controller;
 
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
+import com.ebac.modulo65.dto.Usuario;
+import com.ebac.modulo65.service.UsuarioService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
-//@ExtendWith(MockitoExtension.class)
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
 class UsuarioControllerTest {
 
-    /*@Mock
-    UsuarioService usuarioService;
+    @Mock
+    private UsuarioService usuarioService;
 
     @InjectMocks
-    UsuarioController usuarioController;
+    private UsuarioController usuarioController;
 
-    @Test
-    void obtenerUsuarios() {
-        int usuarios = 5;
-        List<Usuario> usuariosListExpected = crearUsuarios(usuarios);
+    private Usuario usuario1;
+    private Usuario usuario2;
 
-        // Configuramos el comportamiento del mock
-        when(usuarioService.obtenerUsuarios()).thenReturn(usuariosListExpected);
+    @BeforeEach
+    void setUp() {
+        usuario1 = new Usuario("Juan Perez", 25);
+        usuario1.setIdUsuario(1);
 
-        // Ejecutamos el metodo del controlador
-        List<Usuario> usuariosListActual = usuarioController.obtenerUsuarios();
-
-        // Validamos el resultado
-        assertEquals(usuarios, usuariosListActual.size());
-        assertEquals(usuariosListExpected, usuariosListActual);
+        usuario2 = new Usuario("Maria Garcia", 30);
+        usuario2.setIdUsuario(2);
     }
 
     @Test
-    void obtenerUsuariosCuandoNoExisten() {
-        // Configuramos el comportamiento del mock
-        when(usuarioService.obtenerUsuarios()).thenReturn(List.of());
+    void obtenerUsuarios_CuandoExistenUsuarios_DeberiaRetornarLista() {
+        // Arrange
+        List<Usuario> usuariosEsperados = Arrays.asList(usuario1, usuario2);
+        when(usuarioService.obtenerUsuarios()).thenReturn(usuariosEsperados);
 
-        // Ejecutamos el metodo del controlador
-        List<Usuario> usuarioListActual = usuarioController.obtenerUsuarios();
+        // Act
+        ResponseWrapper<List<Usuario>> wrapper = usuarioController.obtenerUsuarios();
 
-        // Validamos el resultado
-        assertTrue(usuarioListActual.isEmpty());
-
+        // Assert
+        assertTrue(wrapper.isSuccess());
+        assertEquals("Usuarios obtenidos", wrapper.getMessage());
+        assertEquals(HttpStatus.OK, wrapper.getResponseEntity().getStatusCode());
+        assertEquals(2, wrapper.getResponseEntity().getBody().size());
         verify(usuarioService, times(1)).obtenerUsuarios();
     }
 
     @Test
-    void obtenerUsuarioPorId() {
-        long idUsuario = 1;
-        Optional<Usuario> usuarioExpected = Optional.of(crearUsuarios(1).get(0));
+    void obtenerUsuarios_CuandoNoExistenUsuarios_DeberiaRetornarListaVacia() {
+        // Arrange
+        when(usuarioService.obtenerUsuarios()).thenReturn(List.of());
 
-        // Configuramos el comportamiento del mock
-        when(usuarioService.obtenerUsuarioPorId(idUsuario)).thenReturn(usuarioExpected);
+        // Act
+        ResponseWrapper<List<Usuario>> wrapper = usuarioController.obtenerUsuarios();
 
-        // Ejecutamos el metodo del controlador
-        ResponseEntity<Usuario> usuarioResponseEntity = usuarioController.obtenerUsuarioPorId(idUsuario);
-        Usuario usuarioActual = usuarioResponseEntity.getBody();
-
-        // Validamos el resultado
-        assertEquals(200, usuarioResponseEntity.getStatusCode().value());
-        assertNotNull(usuarioActual);
-        assertEquals("Nombre1", usuarioActual.getNombre());
+        // Assert
+        assertTrue(wrapper.isSuccess());
+        assertEquals("Usuarios obtenidos", wrapper.getMessage());
+        assertEquals(HttpStatus.OK, wrapper.getResponseEntity().getStatusCode());
+        assertTrue(wrapper.getResponseEntity().getBody().isEmpty());
+        verify(usuarioService, times(1)).obtenerUsuarios();
     }
 
     @Test
-    void obtenerUsuarioPorIdCuandoNoExiste() {
-        long idUsuario = 1;
+    void obtenerUsuarioPorId_CuandoUsuarioExiste_DeberiaRetornarUsuario() {
+        // Arrange
+        int id = 1;
+        when(usuarioService.obtenerUsuario(id)).thenReturn(usuario1);
 
-        // Configuramos el comportamiento del mock
-        when(usuarioService.obtenerUsuarioPorId(idUsuario)).thenReturn(Optional.empty());
+        // Act
+        ResponseWrapper<Usuario> wrapper = usuarioController.obtenerUsuario(id);
 
-        // Ejecutamos el metodo del controlador
-        ResponseEntity<Usuario> usuarioResponseEntity = usuarioController.obtenerUsuarioPorId(idUsuario);
-        Usuario usuarioActual = usuarioResponseEntity.getBody();
-
-        // Validamos el resultado
-        assertEquals(404, usuarioResponseEntity.getStatusCode().value());
-        assertTrue(Objects.isNull(usuarioActual));
+        // Assert
+        assertTrue(wrapper.isSuccess());
+        assertEquals("Usuario obtenido", wrapper.getMessage());
+        assertEquals(HttpStatus.OK, wrapper.getResponseEntity().getStatusCode());
+        assertNotNull(wrapper.getResponseEntity().getBody());
+        assertEquals("Juan Perez", wrapper.getResponseEntity().getBody().getNombre());
+        verify(usuarioService, times(1)).obtenerUsuario(id);
     }
 
     @Test
-    void crearUsuario() throws Exception {
-        Usuario usuarioExpected = crearUsuarios(1).get(0);
+    void obtenerUsuarioPorId_CuandoUsuarioNoExiste_DeberiaRetornarNotFound() {
+        // Arrange
+        int id = 99;
+        when(usuarioService.obtenerUsuario(id)).thenReturn(null);
 
-        // Configuramos el comportamiento del mock
-        when(usuarioService.crearUsuario(usuarioExpected)).thenReturn(usuarioExpected);
+        // Act
+        ResponseWrapper<Usuario> wrapper = usuarioController.obtenerUsuario(id);
 
-        // Ejecutamos el metodo del controlador
-        ResponseEntity<Usuario> usuarioResponseEntity = usuarioController.crearUsuario(usuarioExpected);
-        Usuario usuarioActual = usuarioResponseEntity.getBody();
-
-        // Validamos el resultado
-        assertEquals(201, usuarioResponseEntity.getStatusCode().value());
-        assertTrue(Objects.isNull(usuarioActual));
+        // Assert
+        assertFalse(wrapper.isSuccess());
+        assertEquals("Usuario no encontrado", wrapper.getMessage());
+        assertEquals(HttpStatus.NOT_FOUND, wrapper.getResponseEntity().getStatusCode());
+        assertNull(wrapper.getResponseEntity().getBody());
+        verify(usuarioService, times(1)).obtenerUsuario(id);
     }
 
     @Test
-    void actualizarUsuario() {
-        int idUsuario = 5;
-        String nombreActualizado = "Beatriz";
-        int edadActualizada = 25;
+    void guardarUsuario_CuandoUsuarioValido_DeberiaGuardarYRetornarUsuario() {
+        // Arrange
+        Usuario nuevoUsuario = new Usuario("Carlos Lopez", 28);
+        when(usuarioService.guardarUsuario(any(Usuario.class))).thenReturn(usuario1);
 
-        Usuario usuarioAntiguo = new Usuario();
-        usuarioAntiguo.setIdUsuario(idUsuario);
-        usuarioAntiguo.setNombre("Julieta");
-        usuarioAntiguo.setEdad(28);
+        // Act
+        ResponseWrapper<Usuario> wrapper = usuarioController.guardarUsuario(nuevoUsuario);
 
-        Usuario usuarioActualizado = new Usuario();
-        usuarioActualizado.setNombre(nombreActualizado);
-        usuarioActualizado.setEdad(edadActualizada);
-
-        // Configuramos el comportamiento del mock
-        when(usuarioService.obtenerUsuarioPorId((long) idUsuario)).thenReturn(Optional.of(usuarioAntiguo));
-        doNothing().when(usuarioService).actualizarUsuario(usuarioActualizado);
-
-        // Ejecutamos el metodo del controlador
-        ResponseEntity<Usuario> usuarioResponseEntity = usuarioController.actualizarUsuario((long) idUsuario, usuarioActualizado);
-        Usuario usuarioActual = usuarioResponseEntity.getBody();
-
-        // Validamos el resultado
-        assertEquals(200, usuarioResponseEntity.getStatusCode().value());
-        assertNotNull(usuarioActual);
-        assertEquals(idUsuario, usuarioActual.getIdUsuario());
-        assertEquals(nombreActualizado, usuarioActual.getNombre());
-        assertEquals(edadActualizada, usuarioActual.getEdad());
+        // Assert
+        assertTrue(wrapper.isSuccess());
+        assertEquals("Usuario guardado", wrapper.getMessage());
+        assertEquals(HttpStatus.OK, wrapper.getResponseEntity().getStatusCode());
+        assertNotNull(wrapper.getResponseEntity().getBody());
+        assertEquals(1, wrapper.getResponseEntity().getBody().getIdUsuario());
+        verify(usuarioService, times(1)).guardarUsuario(nuevoUsuario);
     }
 
     @Test
-    void actualizarUsuarioCuandoElUsuarioNoExiste() {
-        long idUsuario = 5;
-        String nombreActualizado = "Beatriz";
-        int edadActualizada = 25;
+    void guardarUsuario_CuandoNombreEsNulo_DeberiaManejarExcepcion() {
+        // Arrange
+        Usuario usuarioInvalido = new Usuario(null, 25);
+        when(usuarioService.guardarUsuario(any(Usuario.class)))
+                .thenThrow(new IllegalArgumentException("El nombre del usuario no puede estar vacío"));
 
-        Usuario usuarioActualizado = new Usuario();
-        usuarioActualizado.setNombre(nombreActualizado);
-        usuarioActualizado.setEdad(edadActualizada);
+        // Act
+        ResponseWrapper<Usuario> wrapper = usuarioController.guardarUsuario(usuarioInvalido);
 
-        // Configuramos el comportamiento del mock
-        when(usuarioService.obtenerUsuarioPorId(idUsuario)).thenReturn(Optional.empty());
-
-        // Ejecutamos el metodo del controlador
-        ResponseEntity<Usuario> usuarioResponseEntity = usuarioController.actualizarUsuario(idUsuario, usuarioActualizado);
-        Usuario usuarioActual = usuarioResponseEntity.getBody();
-
-        // Validamos el resultado
-        assertEquals(404, usuarioResponseEntity.getStatusCode().value());
-        assertNull(usuarioActual);
-        verify(usuarioService, never()).actualizarUsuario(usuarioActualizado);
+        // Assert
+        assertFalse(wrapper.isSuccess());
+        assertEquals("Error: El nombre del usuario no puede estar vacío", wrapper.getMessage());
+        assertEquals(HttpStatus.BAD_REQUEST, wrapper.getResponseEntity().getStatusCode());
     }
 
     @Test
-    void eliminarUsuario() {
-        long idUsuario = 1;
+    void guardarUsuario_CuandoEdadEsInvalida_DeberiaManejarExcepcion() {
+        // Arrange
+        Usuario usuarioInvalido = new Usuario("Test", -5);
+        when(usuarioService.guardarUsuario(any(Usuario.class)))
+                .thenThrow(new IllegalArgumentException("La edad debe estar entre 0 y 150 años"));
 
-        // Configuramos el comportamiento del mock
-        doNothing().when(usuarioService).eliminarUsuario(idUsuario);
+        // Act
+        ResponseWrapper<Usuario> wrapper = usuarioController.guardarUsuario(usuarioInvalido);
 
-        // Ejecutamos el metodo del controlador
-        ResponseEntity<Void> responseEntity = usuarioController.eliminarUsuario(idUsuario);
-
-        // Validamos el resultado
-        assertEquals(204, responseEntity.getStatusCode().value());
-        verify(usuarioService, atLeastOnce()).eliminarUsuario(idUsuario);
+        // Assert
+        assertFalse(wrapper.isSuccess());
+        assertTrue(wrapper.getMessage().contains("La edad debe estar entre 0 y 150 años"));
+        assertEquals(HttpStatus.BAD_REQUEST, wrapper.getResponseEntity().getStatusCode());
     }
 
     @Test
-    void crearUsuarioCuandoSeaMenorA18() throws Exception {
-        Usuario usuario = new Usuario();
-        usuario.setIdUsuario(1);
-        usuario.setNombre("Nombre");
-        usuario.setEdad(10);
+    void eliminarUsuario_CuandoUsuarioExiste_DeberiaEliminarCorrectamente() {
+        // Arrange
+        int id = 1;
+        doNothing().when(usuarioService).eliminarUsuario(id);
 
-        // Configuramos el comportamiento del mock
-        doThrow(Exception.class).when(usuarioService).crearUsuario(usuario);
+        // Act
+        ResponseWrapper<Void> wrapper = usuarioController.eliminarUsuario(id);
 
-        // Ejecutamos el metodo del controlador
-        ResponseEntity<Usuario> responseEntity = usuarioController.crearUsuario(usuario);
-        Usuario usuarioActual = responseEntity.getBody();
-
-        assertEquals(400, responseEntity.getStatusCode().value());
-        assertNull(usuarioActual);
+        // Assert
+        assertTrue(wrapper.isSuccess());
+        assertEquals("Usuario eliminado exitosamente", wrapper.getMessage());
+        assertEquals(HttpStatus.OK, wrapper.getResponseEntity().getStatusCode());
+        verify(usuarioService, times(1)).eliminarUsuario(id);
     }
 
-    private List<Usuario> crearUsuarios(int elementos) {
-        return IntStream.range(1, elementos+1)
-                .mapToObj(i -> {
-                    Usuario usuario = new Usuario();
-                    usuario.setIdUsuario(i);
-                    usuario.setNombre("Nombre" + i);
-                    usuario.setEdad(15 + i);
-                    return usuario;
-                }).collect(Collectors.toList());
-    }*/
+    @Test
+    void eliminarUsuario_CuandoUsuarioNoExiste_DeberiaRetornarNotFound() {
+        // Arrange
+        int id = 99;
+        doThrow(new IllegalArgumentException("Usuario no encontrado para eliminar"))
+                .when(usuarioService).eliminarUsuario(id);
+
+        // Act
+        ResponseWrapper<Void> wrapper = usuarioController.eliminarUsuario(id);
+
+        // Assert
+        assertFalse(wrapper.isSuccess());
+        assertEquals("Usuario no encontrado para eliminar", wrapper.getMessage());
+        assertEquals(HttpStatus.NOT_FOUND, wrapper.getResponseEntity().getStatusCode());
+        verify(usuarioService, times(1)).eliminarUsuario(id);
+    }
 }

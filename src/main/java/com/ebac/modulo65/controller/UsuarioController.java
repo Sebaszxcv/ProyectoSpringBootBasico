@@ -2,96 +2,98 @@ package com.ebac.modulo65.controller;
 
 import com.ebac.modulo65.dto.Usuario;
 import com.ebac.modulo65.service.UsuarioService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 
-@Slf4j
 @RestController
+@RequestMapping("/usuarios")
 public class UsuarioController {
 
-    @Autowired
-    UsuarioService usuarioService;
+    private static final Logger log = LoggerFactory.getLogger(UsuarioController.class);
 
-    @GetMapping("/usuarios")
+    private final UsuarioService usuarioService;
+
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
+
+    @GetMapping
     public ResponseWrapper<List<Usuario>> obtenerUsuarios() {
-        // Devuelve un objeto User que se convertirá automáticamente en JSON/XML en la respuesta.
-        System.out.println("Obteniendo usuarios");
-        log.info("Obteniendo usuarios");
-        List<Usuario> usuarioList = usuarioService.obtenerUsuarios();
-        ResponseEntity<List<Usuario>> responseEntity = ResponseEntity.ok(usuarioList);
-
-        return new ResponseWrapper<>(true, "Listado de usuarios", responseEntity);
-    }
-
-    @GetMapping("/usuarios/{id}")
-    public ResponseWrapper<Usuario> obtenerUsuarioPorId(@PathVariable Long id) {
-        // Lógica para obtener el usuario por su ID
-        // Devuelve un objeto User que se convertirá automáticamente en JSON/XML en la respuesta.
-        Optional<Usuario> usuarioOptional = usuarioService.obtenerUsuarioPorId(id);
-
-        if (usuarioOptional.isPresent()) {
-            //success
-        } else {
-            //fail
-        }
-
-        log.info("Obteniendo usuario por id {}", id);
-        ResponseEntity<Usuario> usuarioResponseEntity =
-                usuarioOptional.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
-        return new ResponseWrapper<>(true, "Informacion del usuario " + id, usuarioResponseEntity);
-    }
-
-    @PostMapping("/usuarios")
-    public ResponseWrapper<Usuario> crearUsuario(@RequestBody Usuario usuario) {
-        // Lógica para crear un nuevo usuario
-        // Retorna ResponseEntity con el objeto User en el cuerpo y un código de estado 201 (CREATED) en la respuesta.
+        log.info("📋 SOLICITUD: Obtener todos los usuarios");
         try {
-            Usuario usuarioCreado = usuarioService.crearUsuario(usuario);
-            ResponseEntity<Usuario> responseEntity = ResponseEntity.created(new URI("http://localhost/usuarios")).body(usuarioCreado);
-            return new ResponseWrapper<>(true, "Usuario creado exitosamente", responseEntity);
+            List<Usuario> usuarios = usuarioService.obtenerUsuarios();
+            log.info("✅ RESPUESTA: {} usuarios obtenidos exitosamente", usuarios.size());
+            return new ResponseWrapper<>(true, "Usuarios obtenidos", ResponseEntity.ok(usuarios));
         } catch (Exception e) {
-            ResponseEntity<Usuario> responseEntity = ResponseEntity.badRequest().build();
-            return new ResponseWrapper<>(false, e.getMessage(), responseEntity);
+            log.error("❌ ERROR al obtener usuarios: {}", e.getMessage());
+            return new ResponseWrapper<>(false, "Error al obtener usuarios",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
         }
     }
 
-    @PutMapping("/usuarios/{id}")
-    public ResponseWrapper<Usuario> actualizarUsuario(@PathVariable Long id, @RequestBody Usuario usuarioActualizado) {
-        // Lógica para actualizar el usuario con el ID proporcionado
-        // Retorna ResponseEntity con el objeto User actualizado en el cuerpo y un código de estado 200 (OK) en la respuesta.
-        Optional<Usuario> usuarioOptional = usuarioService.obtenerUsuarioPorId(id);
-
-        if (usuarioOptional.isPresent()) {
-            usuarioActualizado.setIdUsuario(usuarioOptional.get().getIdUsuario());
-            usuarioService.actualizarUsuario(usuarioActualizado);
-
-            ResponseEntity<Usuario> responseEntity = ResponseEntity.ok(usuarioActualizado);
-            return new ResponseWrapper<>(true, "Usuario actualizado correctamente", responseEntity);
-        } else {
-            ResponseEntity<Usuario> responseEntity = ResponseEntity.notFound().build();
-            return new ResponseWrapper<>(false, "El usuario indicado no existe", responseEntity);
+    @GetMapping("/{id}")
+    public ResponseWrapper<Usuario> obtenerUsuario(@PathVariable int id) {
+        log.info("🔍 SOLICITUD: Obtener usuario con ID: {}", id);
+        try {
+            Usuario usuario = usuarioService.obtenerUsuario(id);
+            if (usuario == null) {
+                log.warn("⚠️ Usuario con ID {} no encontrado", id);
+                return new ResponseWrapper<>(false, "Usuario no encontrado", ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+            }
+            log.info("✅ RESPUESTA: Usuario encontrado - ID: {}, Nombre: {}", id, usuario.getNombre());
+            return new ResponseWrapper<>(true, "Usuario obtenido", ResponseEntity.ok(usuario));
+        } catch (Exception e) {
+            log.error("❌ ERROR al obtener usuario ID {}: {}", id, e.getMessage());
+            return new ResponseWrapper<>(false, "Error al obtener usuario",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
         }
     }
 
-    @DeleteMapping("/usuarios/{id}")
-    public ResponseWrapper<Void> eliminarUsuario(@PathVariable Long id) {
-        // Lógica para eliminar el usuario con el ID proporcionado
-        // Retorna ResponseEntity con un código de estado 204 (NO_CONTENT) en la respuesta.
-        usuarioService.eliminarUsuario(id);
+    @PostMapping
+    public ResponseWrapper<Usuario> guardarUsuario(@RequestBody Usuario usuario) {
+        log.info("💾 SOLICITUD: Guardar usuario: {}", usuario.getNombre());
+        try {
+            Usuario guardado = usuarioService.guardarUsuario(usuario);
+            log.info("✅ RESPUESTA: Usuario guardado - ID: {}, Nombre: {}", guardado.getIdUsuario(), guardado.getNombre());
+            return new ResponseWrapper<>(true, "Usuario guardado", ResponseEntity.ok(guardado));
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Validación fallida al guardar usuario: {}", e.getMessage());
+            return new ResponseWrapper<>(false, "Error: " + e.getMessage(),
+                    ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
+        } catch (Exception e) {
+            log.error("❌ ERROR inesperado al guardar usuario: {}", e.getMessage());
+            return new ResponseWrapper<>(false, "Error interno del servidor",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+        }
+    }
 
-        ResponseEntity<Void> responseEntity = ResponseEntity.noContent().build();
-        return new ResponseWrapper<>(true, "Usuario eliminado correctamente", responseEntity);
+    @DeleteMapping("/{id}")
+    public ResponseWrapper<Void> eliminarUsuario(@PathVariable int id) {
+        log.info("🗑️ SOLICITUD: Eliminar usuario ID: {}", id);
+        try {
+            usuarioService.eliminarUsuario(id);
+            log.info("✅ RESPUESTA: Usuario ID {} eliminado exitosamente", id);
+            return new ResponseWrapper<>(true, "Usuario eliminado exitosamente", ResponseEntity.ok().build());
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ No se puede eliminar usuario: {}", e.getMessage());
+            return new ResponseWrapper<>(false, e.getMessage(),
+                    ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (Exception e) {
+            log.error("❌ ERROR al eliminar usuario ID {}: {}", id, e.getMessage());
+            return new ResponseWrapper<>(false, "Error al eliminar usuario",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+        }
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseWrapper<Object> handleValidationExceptions(IllegalArgumentException ex) {
+        log.warn("⚠️ Validación fallida: {}", ex.getMessage());
+        return new ResponseWrapper<>(false, "Error: " + ex.getMessage(),
+                ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
     }
 }

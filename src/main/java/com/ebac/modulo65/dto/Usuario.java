@@ -1,26 +1,31 @@
 package com.ebac.modulo65.dto;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import lombok.Data;
+import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Data
 @Entity
+@Table(name = "usuarios")
 public class Usuario {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int idUsuario;
+
     private String nombre;
     private int edad;
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
-    @JsonManagedReference  // Parte administrada de la relación
-    private List<Telefono> telefonos = new ArrayList<>();
+
+    public Usuario() {}
+
+    public Usuario(String nombre, int edad) {
+        this.nombre = nombre;
+        this.edad = edad;
+    }
+
+    public int getIdUsuario() { return idUsuario; }
+    public void setIdUsuario(int idUsuario) { this.idUsuario = idUsuario; }
+
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public int getEdad() { return edad; }
+    public void setEdad(int edad) { this.edad = edad; }
 }

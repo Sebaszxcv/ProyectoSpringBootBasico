@@ -1,85 +1,107 @@
 package com.ebac.modulo65.controller;
 
 import com.ebac.modulo65.dto.Telefono;
+import com.ebac.modulo65.dto.Usuario;
 import com.ebac.modulo65.service.TelefonoService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.ebac.modulo65.service.UsuarioService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
+@RequestMapping("/telefonos")
 public class TelefonoController {
 
-    @Autowired
-    TelefonoService telefonoService;
+    private static final Logger log = LoggerFactory.getLogger(TelefonoController.class);
 
-    @GetMapping("/telefonos")
+    private final TelefonoService telefonoService;
+    private final UsuarioService usuarioService;
+
+    public TelefonoController(TelefonoService telefonoService, UsuarioService usuarioService) {
+        this.telefonoService = telefonoService;
+        this.usuarioService = usuarioService;
+    }
+
+    @GetMapping
     public ResponseWrapper<List<Telefono>> obtenerTelefonos() {
-        // Devuelve un objeto User que se convertirá automáticamente en JSON/XML en la respuesta.
-        List<Telefono> telefonos = telefonoService.obtenerTelefonos();
-        ResponseEntity<List<Telefono>> responseEntity = ResponseEntity.ok(telefonos);
-
-        return new ResponseWrapper<>(true, "Listado de telefonos", responseEntity);
-    }
-
-    @GetMapping("/telefonos/{id}")
-    public ResponseWrapper<Telefono> obtenerTelefonoPorId(@PathVariable Long id) {
-        // Lógica para obtener el telefono por su ID
-        // Devuelve un objeto User que se convertirá automáticamente en JSON/XML en la respuesta.
-        Optional<Telefono> telefonoOptional = telefonoService.obtenerTelefonoPorId(id);
-        ResponseEntity<Telefono> responseEntity = telefonoOptional.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
-
-        return new ResponseWrapper<>(true, "Informacion del telefono " + id, responseEntity);
-    }
-
-    @PostMapping("/telefonos")
-    public ResponseWrapper<Telefono> crearTelefono(@RequestBody Telefono telefono) {
-        // Lógica para crear un nuevo telefono
-        // Retorna ResponseEntity con el objeto User en el cuerpo y un código de estado 201 (CREATED) en la respuesta.
+        log.info("📋 SOLICITUD: Obtener todos los teléfonos");
         try {
-            Telefono telefonoCreado = telefonoService.crearTelefono(telefono);
-            ResponseEntity<Telefono> responseEntity = ResponseEntity.created(new URI("http://localhost/telefonos")).body(telefonoCreado);
-            return new ResponseWrapper<>(true, "Telefono creado exitosamente", responseEntity);
+            List<Telefono> telefonos = telefonoService.obtenerTelefonos();
+            log.info("✅ RESPUESTA: {} teléfonos obtenidos exitosamente", telefonos.size());
+            return new ResponseWrapper<>(true, "Teléfonos obtenidos exitosamente", ResponseEntity.ok(telefonos));
         } catch (Exception e) {
-            ResponseEntity<Telefono> responseEntity = ResponseEntity.badRequest().build();
-            return new ResponseWrapper<>(false, e.getMessage(), responseEntity);
+            log.error("❌ ERROR al obtener teléfonos: {}", e.getMessage());
+            return new ResponseWrapper<>(false, "Error al obtener teléfonos",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
         }
     }
 
-    @PutMapping("/telefonos/{id}")
-    public ResponseWrapper<Telefono> actualizarTelefono(@PathVariable Long id, @RequestBody Telefono telefonoActualizado) {
-        // Lógica para actualizar el telefono con el ID proporcionado
-        // Retorna ResponseEntity con el objeto Telefono actualizado en el cuerpo y un código de estado 200 (OK) en la respuesta.
-        Optional<Telefono> telefonoOptional = telefonoService.obtenerTelefonoPorId(id);
+    @GetMapping("/usuario/{usuarioId}")
+    public ResponseWrapper<List<Telefono>> obtenerTelefonosPorUsuario(@PathVariable int usuarioId) {
+        log.info("📋 SOLICITUD: Obtener teléfonos del usuario ID: {}", usuarioId);
+        try {
+            if (!usuarioService.existeUsuario(usuarioId)) {
+                log.warn("⚠️ Usuario ID {} no encontrado", usuarioId);
+                return new ResponseWrapper<>(false, "Usuario no encontrado",
+                        ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+            }
 
-        if (telefonoOptional.isPresent()) {
-            telefonoActualizado.setIdTelefono(telefonoOptional.get().getIdTelefono());
-            telefonoService.actualizarTelefono(telefonoActualizado);
-
-            ResponseEntity<Telefono> responseEntity = ResponseEntity.ok(telefonoActualizado);
-            return new ResponseWrapper<>(true, "Telefono actualizado correctamente", responseEntity);
-        } else {
-            ResponseEntity<Telefono> responseEntity = ResponseEntity.notFound().build();
-            return new ResponseWrapper<>(false, "El telefono indicado no existe", responseEntity);
+            List<Telefono> telefonos = telefonoService.obtenerTelefonosPorUsuario(usuarioId);
+            log.info("✅ RESPUESTA: {} teléfonos encontrados para usuario ID: {}", telefonos.size(), usuarioId);
+            return new ResponseWrapper<>(true, "Teléfonos del usuario obtenidos exitosamente", ResponseEntity.ok(telefonos));
+        } catch (Exception e) {
+            log.error("❌ ERROR al obtener teléfonos del usuario {}: {}", usuarioId, e.getMessage());
+            return new ResponseWrapper<>(false, "Error al obtener teléfonos del usuario",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
         }
     }
 
-    @DeleteMapping("/telefonos/{id}")
-    public ResponseWrapper<Void> eliminarTelefono(@PathVariable Long id) {
-        // Lógica para eliminar el telefono con el ID proporcionado
-        // Retorna ResponseEntity con un código de estado 204 (NO_CONTENT) en la respuesta.
-        telefonoService.eliminarTelefono(id);
+    @PostMapping("/{usuarioId}")
+    public ResponseWrapper<Telefono> guardarTelefono(@PathVariable int usuarioId, @RequestBody Telefono telefono) {
+        log.info("📋 SOLICITUD: Guardar teléfono para usuario ID: {}", usuarioId);
+        try {
+            Usuario usuario = usuarioService.obtenerUsuario(usuarioId);
+            if (usuario == null) {
+                log.warn("❌ No se puede guardar teléfono: usuario ID {} no encontrado", usuarioId);
+                return new ResponseWrapper<>(false, "Usuario no encontrado",
+                        ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+            }
 
-        ResponseEntity<Void> responseEntity = ResponseEntity.noContent().build();
-        return new ResponseWrapper<>(true, "Telefono eliminado correctamente", responseEntity);
+            Telefono guardado = telefonoService.guardarTelefono(telefono, usuario);
+            log.info("✅ RESPUESTA: Teléfono guardado exitosamente - ID: {}, Usuario: {}",
+                    guardado.getIdTelefono(), usuario.getNombre());
+            return new ResponseWrapper<>(true, "Teléfono guardado exitosamente", ResponseEntity.ok(guardado));
+
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Validación fallida al guardar teléfono: {}", e.getMessage());
+            return new ResponseWrapper<>(false, e.getMessage(),
+                    ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
+        } catch (Exception e) {
+            log.error("❌ ERROR inesperado al guardar teléfono: {}", e.getMessage());
+            return new ResponseWrapper<>(false, "Error interno del servidor",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseWrapper<Void> eliminarTelefono(@PathVariable int id) {
+        log.info("📋 SOLICITUD: Eliminar teléfono ID: {}", id);
+        try {
+            telefonoService.eliminarTelefono(id);
+            log.info("✅ RESPUESTA: Teléfono ID {} eliminado exitosamente", id);
+            return new ResponseWrapper<>(true, "Teléfono eliminado exitosamente", ResponseEntity.ok().build());
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ No se puede eliminar teléfono: {}", e.getMessage());
+            return new ResponseWrapper<>(false, e.getMessage(),
+                    ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (Exception e) {
+            log.error("❌ ERROR al eliminar teléfono ID {}: {}", id, e.getMessage());
+            return new ResponseWrapper<>(false, "Error al eliminar teléfono",
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+        }
     }
 }
